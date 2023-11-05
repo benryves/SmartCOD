@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.7.34221.43
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SmartCOD", "SmartCOD.csproj", "{0AAC5FF1-6854-462D-A15F-C3EEADAA79D2}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{0AAC5FF1-6854-462D-A15F-C3EEADAA79D2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0AAC5FF1-6854-462D-A15F-C3EEADAA79D2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0AAC5FF1-6854-462D-A15F-C3EEADAA79D2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0AAC5FF1-6854-462D-A15F-C3EEADAA79D2}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {C7A4C930-A6DD-41AC-B508-FE7C115231C5}
+	EndGlobalSection
+EndGlobal
