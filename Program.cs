@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.IO.Ports;
 
@@ -36,12 +35,24 @@ namespace SmartCOD {
 					} else {
 						var optionKey = arg.Substring(1).ToLowerInvariant();
 						var optionValue = argQueue.Dequeue();
-						// Remove the old value.
-						if (options.ContainsKey(optionKey)) {
-							options.Remove(optionKey);
+						// Handle special options first, then store the option value directly if otherwise unsupported.
+						switch (optionKey) {
+							case "unset":
+								// Remove the option specified by the value.
+								optionValue = optionValue.ToLowerInvariant();
+								if (options.ContainsKey(optionValue)) {
+									options.Remove(optionValue);
+								}
+								break;
+							default:
+								// Remove the old value.
+								if (options.ContainsKey(optionKey)) {
+									options.Remove(optionKey);
+								}
+								// Store the new value.
+								options.Add(optionKey, optionValue);
+								break;
 						}
-						// Store the new value.
-						options.Add(optionKey, optionValue);
 					}
 				} else {
 					// It's a command.
@@ -52,6 +63,9 @@ namespace SmartCOD {
 						case "load":
 							returnValue = Load(options);
 							break;
+						case "list":
+							returnValue = List(options);
+							break;
 						default:
 							Console.Error.WriteLine("Unsupported operation '{0}'.", args[0]);
 							returnValue = 1;
@@ -61,6 +75,32 @@ namespace SmartCOD {
 			}
 
 			return returnValue;
+		}
+
+		/// <summary>
+		/// Try to get a SmartBox instance based on the supplied command-line options.
+		/// </summary>
+		/// <param name="options">The current array of options to use.</param>
+		/// <param name="box">Returns the SmartBox instance if it could be found.</param>
+		/// <returns>True on success, false on failure.</returns>
+		static bool TryGetSmartBox(Dictionary<string, string> options, out SmartBox box) {
+			
+			box = default;
+
+			// Open the serial port.
+			if (!options.ContainsKey("port")) {
+				Console.Error.WriteLine("SmartBox serial port option -port <portname> not specified.");
+				return false;
+			}
+
+			var portName = options["port"];
+			if (!Array.Exists(SerialPort.GetPortNames(), pn => pn.ToLowerInvariant() == portName.ToLowerInvariant())) {
+				Console.Error.WriteLine("Invalid serial port name '{0}'.", portName);
+				return false;
+			}
+
+			box = new SmartBox(portName);
+			return true;
 		}
 
 		/// <summary>
@@ -165,57 +205,62 @@ namespace SmartCOD {
 				return 1;
 			}
 
-			// Open the serial port.
-			if (!options.ContainsKey("port")) {
-				Console.Error.WriteLine("SmartBox serial port option -port <portname> not specified.");
+
+			if (!TryGetSmartBox(options, out SmartBox box)) {
 				return 1;
-			}
+			} else {
+				using (box) {
 
-			var portName = options["port"];
-			if (!Array.Exists(SerialPort.GetPortNames(), pn => pn.ToLowerInvariant() == portName.ToLowerInvariant())) {
-				Console.Error.WriteLine("Invalid serial port name '{0}'.", portName);
-				return 1;
-			}
+					// Get free memory.
+					var lomem = box.ReadLomem();
+					var himem = box.ReadHimem();
 
-			using (var box = new SmartBox(portName)) {
+					if (fileIn.Length > (himem - lomem)) {
+						Console.Error.WriteLine("'{0}' is too large to fit in SmartBox memory ({1} bytes available).", fileIn.Name, himem - lomem);
+						return 1;
+					}
 
-                // Display the SmartBox version information and credits.
-                Console.WriteLine(box.GetCredits().Replace("\r", Environment.NewLine).Trim());
+					// Read code file.
+					var fileData = File.ReadAllBytes(fileIn.FullName);
 
-				// Get free memory.
-				var lomem = box.ReadLomem();
-				var himem = box.ReadHimem();
+					// Send to SmartBox.
+					int chunkSize = 128;
+					const string progressMessage = "\rDownloading {0} into SmartBox at &{1:X4} ({2:P})...";
+					for (int offset = 0; offset < fileData.Length; offset += chunkSize) {
+						Console.Write(progressMessage, fileIn.Name, lomem, (float)offset / (float)fileData.Length);
+						int length = Math.Min(chunkSize, fileData.Length - offset);
+						box.port.Write((byte)SmartBox.Command.DownloadData);
+						box.port.Write((ushort)(lomem + offset));
+						box.port.Write((ushort)length);
+						box.port.Write(fileData, offset, length);
+					}
+					Console.WriteLine(progressMessage + " OK", fileIn.Name, lomem, 1);
 
-				if (fileIn.Length > (himem - lomem)) {
-					Console.Error.WriteLine("'{0}' is too large to fit in SmartBox memory ({1} bytes available).", fileIn.Name, himem - lomem);
-					return 1;
+					// Execute the code file.
+					ushort entrypoint = (ushort)(lomem + fileData[0] + fileData[1] * 256);
+					Console.Write("Executing &{0:X4}...", entrypoint);
+					box.ExecuteCode(entrypoint, 0, (byte)entrypoint, (byte)(entrypoint / 256));
+					Console.WriteLine(" OK");
 				}
-
-				// Read code file.
-				var fileData = File.ReadAllBytes(fileIn.FullName);
-
-				// Send to SmartBox.
-				int chunkSize = 128;
-				const string progressMessage = "\rDownloading {0} into SmartBox at &{1:X4} ({2:P})...";
-				for (int offset = 0; offset < fileData.Length; offset += chunkSize) {
-					Console.Write(progressMessage, fileIn.Name, lomem, (float)offset / (float)fileData.Length);
-					int length = Math.Min(chunkSize, fileData.Length - offset);
-					box.port.Write((byte)SmartBox.Command.DownloadData);
-					box.port.Write((ushort)(lomem + offset));
-					box.port.Write((ushort)length);
-					box.port.Write(fileData, offset, length);
-				}
-				Console.WriteLine(progressMessage + " OK", fileIn.Name, lomem, 1);
-
-				// Execute the code file.
-				ushort entrypoint = (ushort)(lomem + fileData[0] + fileData[1] * 256);
-				Console.Write("Executing &{0:X4}...", entrypoint);
-				box.ExecuteCode(entrypoint, 0, (byte)entrypoint, (byte)(entrypoint / 256));
-                Console.WriteLine(" OK");
-            }
-
+			}
 			return 0;
 
+		}
+
+		static int List(Dictionary<string, string> options) {
+			if (!TryGetSmartBox(options, out SmartBox box)) {
+				return 1;
+			} else {
+				using (box) {
+					string s;
+					for (int i = 0; i < byte.MaxValue; ++i) {
+						if (!string.IsNullOrEmpty(s = box.GetCodeName((byte)i))) {
+							Console.WriteLine("{0}: {1}", i, s);
+                        }
+					}
+				}
+			}
+			return 0;
 		}
 	}
 }
