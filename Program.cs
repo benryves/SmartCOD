@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.IO.Ports;
@@ -10,42 +11,77 @@ namespace SmartCOD {
 
 			// Check for input arguments.
 			if (args.Length == 0) {
-				Console.WriteLine("Usage: {0} build <output COD name> [code1 name] [code2 name]", Process.GetCurrentProcess().ProcessName);
-				Console.WriteLine("   or: {0} load <input COD name> <SmartBox serial port name>", Process.GetCurrentProcess().ProcessName);
 				return 1;
 			}
 
-			// What operation has been selected?
-			switch (args[0].ToLowerInvariant()) {
-				case "build":
-					return Build(args);
-				case "load":
-					return Load(args);
-				default:
-					Console.Error.WriteLine("Unsupported operation '{0}'.", args[0]);
-					return 1;
+			// We'll pull arguments from a queue.
+			var argQueue = new Queue<string>(args);
+
+			// Parsed option values.
+			var options = new Dictionary<string, string>();
+
+			// What's our return value?
+			int returnValue = 0;
+
+			// Work through the argument list.
+			while (returnValue == 0 && argQueue.Count > 0) {
+				var arg = argQueue.Dequeue();
+				if (arg.StartsWith("-")) {
+					// It's an option to a subsequent command.
+					if (arg.Length == 1) {
+						continue;
+					} else if (argQueue.Count < 1) {
+						Console.Error.WriteLine("No option value following option '{0}'.", arg);
+						return 1;
+					} else {
+						var optionKey = arg.Substring(1).ToLowerInvariant();
+						var optionValue = argQueue.Dequeue();
+						// Remove the old value.
+						if (options.ContainsKey(optionKey)) {
+							options.Remove(optionKey);
+						}
+						// Store the new value.
+						options.Add(optionKey, optionValue);
+					}
+				} else {
+					// It's a command.
+					switch (arg.ToLowerInvariant()) {
+						case "build":
+							returnValue = Build(options);
+							break;
+						case "load":
+							returnValue = Load(options);
+							break;
+						default:
+							Console.Error.WriteLine("Unsupported operation '{0}'.", args[0]);
+							returnValue = 1;
+							break;
+					}
+				}
 			}
+
+			return returnValue;
 		}
 
 		/// <summary>
 		/// Build a COD file from two code files (master and difference).
 		/// </summary>
-		static int Build(string[] args) {
+		static int Build(Dictionary<string, string> options) {
 			
 			// We must have at least an output filename.
-			if (args.Length < 2) {
-				Console.Error.WriteLine("Output COD filename not specified.");
+			if (!options.ContainsKey("cod")) {
+				Console.Error.WriteLine("Output file option -cod <filename> not specified.");
 				return 1;
 			}
-			var fileOut = new FileInfo(args[1]);
+			var fileOut = new FileInfo(options["cod"]);
 
 			// Default filenames are "code1" and "code2"
 			var fileMaster = new FileInfo("code1");
 			var fileDiff = new FileInfo("code2");
 
 			// If arguments are specified, use those as the input files.
-			if (args.Length > 2) fileMaster = new FileInfo(args[2]);
-			if (args.Length > 3) fileDiff = new FileInfo(args[3]);
+			if (options.ContainsKey("master")) fileMaster = new FileInfo(options["master"]);
+			if (options.ContainsKey("diff")) fileDiff = new FileInfo(options["diff"]);
 
 			// Check if the master file exists.
 			if (!fileMaster.Exists) {
@@ -115,14 +151,14 @@ namespace SmartCOD {
 		/// <summary>
 		/// Load and run a COD file on a connected SmartBox.
 		/// </summary>
-		static int Load(string[] args) {
+		static int Load(Dictionary<string, string> options) {
 
 			// We must have at least an input filename.
-			if (args.Length < 2) {
-				Console.Error.WriteLine("Input COD filename not specified.");
+			if (!options.ContainsKey("cod")) {
+				Console.Error.WriteLine("Input file option -cod <filename> not specified.");
 				return 1;
 			}
-			var fileIn = new FileInfo(args[1]);
+			var fileIn = new FileInfo(options["cod"]);
 
 			if (!fileIn.Exists) {
 				Console.Error.WriteLine("Code file '{0}' does not exist.", fileIn.Name);
@@ -130,16 +166,18 @@ namespace SmartCOD {
 			}
 
 			// Open the serial port.
-			if (args.Length < 3) {
-				Console.Error.WriteLine("SmartBox serial port name not specified.");
-				return 1;
-			}
-			if (!Array.Exists(SerialPort.GetPortNames(), pn=>pn.ToLowerInvariant() == args[2].ToLowerInvariant())) {
-				Console.Error.WriteLine("Invalid serial port name '{0}'.", args[2]);
+			if (!options.ContainsKey("port")) {
+				Console.Error.WriteLine("SmartBox serial port option -port <portname> not specified.");
 				return 1;
 			}
 
-			using (var box = new SmartBox(args[2])) {
+			var portName = options["port"];
+			if (!Array.Exists(SerialPort.GetPortNames(), pn => pn.ToLowerInvariant() == portName.ToLowerInvariant())) {
+				Console.Error.WriteLine("Invalid serial port name '{0}'.", portName);
+				return 1;
+			}
+
+			using (var box = new SmartBox(portName)) {
 
                 // Display the SmartBox version information and credits.
                 Console.WriteLine(box.GetCredits().Replace("\r", Environment.NewLine).Trim());
