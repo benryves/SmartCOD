@@ -1,0 +1,42 @@
+Usage:
+
+  SmartCOD -option value command
+
+  Option names start with a -dash and all options must precede the
+  corresponding command.
+
+  Options are retained after executing a command, so for example if
+  you are building and loading a .COD file in one command line you
+  only need to specify -cod <filename> before the build command and
+  it will still be set when the load command runs.
+
+  If you need to unset an option you can do so manually with the
+  -unset <option> option.
+
+Commands:
+
+  BUILD
+    Build a .COD file from a "master" and "difference" compiled file.
+    Options:
+      -cod <filename>        : Filename of the .COD file to generate.
+      -master <filename>     : Filename of the master code file
+                                 (optional, defaults to code1).
+      -difference <filename> : Name of the difference code file
+                                 (optional, defaults to code2).
+    Example:
+      SmartCOD -cod DEMOJOB.COD build
+
+  LOAD
+    Downloads a .COD file to the SmartBox and executes it.
+    Options:
+      -cod <filename>  : Filename of the .COD file to load and execute.
+      -port <portname> : Port name of the SmartBox's serial port.
+    Example:
+      SmartCOD -cod DEMOJOB.COD -port COM1 load
+
+  LIST
+    Lists jobs on the connected SmartBox.
+    Options:
+      -port <portname> : Port name of the SmartBox's serial port.
+    Example:
+      SmartCOD -port COM1 list

@@ -10,6 +10,7 @@ namespace SmartCOD {
 
 			// Check for input arguments.
 			if (args.Length == 0) {
+				Console.WriteLine(Properties.Resources.CommandLine);
 				return 1;
 			}
 
