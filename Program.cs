@@ -257,7 +257,7 @@ namespace SmartCOD {
 					for (int i = 0; i < byte.MaxValue; ++i) {
 						if (!string.IsNullOrEmpty(s = box.GetCodeName((byte)i))) {
 							Console.WriteLine("{0}: {1}", i, s);
-                        }
+						}
 					}
 				}
 			}
