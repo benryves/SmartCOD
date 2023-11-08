@@ -9,7 +9,7 @@ To create the single COD file containing your job's code, the relocation routine
 2. The "difference" machine code for your job assembled at some other origin (e.g. &0200).
 3. The offset to the relocation routine's entry point in the assembled program. This should be stored in the first two bytes of the program (little-endian).
 
-The SmartBox OS documentation goes into detail about how such jobs should be written, but here is the sample code in a form that can be assembled using beebasm:
+The [SmartBox OS documentation](https://github.com/Phipli/SmartBox/issues/2#issuecomment-597111920) goes into detail about how such jobs should be written, but here is the sample code in a form that can be assembled using [beebasm](https://github.com/stardot/beebasm/):
 
 ```
 no_of_calls = 1
@@ -240,4 +240,60 @@ It's also possible to combine the three separate commands into a single command-
 SmartCOD -cod DEMO.COD build -port COM1 load list
 ```
 
-Running the job that you have installed on the SmartBox is currently outside the scope of this tool as that will depend on what inputs your job accepts and what outputs it generates.
+Running the job that you have installed on the SmartBox is currently outside the scope of this tool as that will depend on what inputs your job accepts and what outputs it generates which cannot be determined ahead of time.
+Running your installed job will generally follow this process:
+
+1. Use the NameCode job on the SmartBox to get the call number of your job: send the byte 3, then the name of your job as an ASCII string terminated with CR (13), then read one byte back. That returned byte will have the call number.
+2. Send the call number byte to the SmartBox, then any input data that your job requires (the job will retrieve the input data from the caller via OS_READJOB).
+3. Read back as many bytes from the SmartBox as your job is designed to return (the job will send output data to the caller via OS_SENDJOB).
+
+## Command-line usage
+
+```
+SmartCOD -option value command
+```
+
+Option names start with a `-dash` and all options must precede the corresponding command.
+
+Options are retained after executing a command, so for example if you are building and loading a .COD file in one command line you only need to specify `-cod <filename>` before the build command and it will still be set when the load command runs.
+
+If you need to unset an option you can do so manually with the `-unset <option>` option.
+
+### BUILD
+
+Build a .COD file from a "master" and "difference" compiled file.
+
+| Option                   | Description                                                     |
+|--------------------------|-----------------------------------------------------------------|
+| `-cod <filename>`        | Filename of the .COD file to generate.                          |
+| `-master <filename>`     | Filename of the master code file (optional, defaults to code1). |
+| `-difference <filename>` | Name of the difference code file (optional, defaults to code2). |
+
+```
+SmartCOD -cod DEMOJOB.COD build
+```
+
+### LOAD
+
+Downloads a .COD file to the SmartBox and executes it.
+
+| Option             | Description                                    |
+|--------------------|------------------------------------------------|
+| `-cod <filename>`  | Filename of the .COD file to load and execute. |
+| `-port <portname>` | Port name of the SmartBox's serial port.       |
+
+```
+SmartCOD -cod DEMOJOB.COD -port COM1 load
+```
+
+### LIST
+
+Lists jobs on the connected SmartBox.
+
+| Option             | Description                              |
+|--------------------|------------------------------------------|
+| `-port <portname>` | Port name of the SmartBox's serial port. |
+
+```
+SmartCOD -port COM1 list
+```
