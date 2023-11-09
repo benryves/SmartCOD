@@ -240,12 +240,15 @@ It's also possible to combine the three separate commands into a single command-
 SmartCOD -cod DEMO.COD build -port COM1 load list
 ```
 
-Running the job that you have installed on the SmartBox is currently outside the scope of this tool as that will depend on what inputs your job accepts and what outputs it generates which cannot be determined ahead of time.
-Running your installed job will generally follow this process:
+To run the job that you have installed on the SmartBox you will need to specify the inputs your job accepts and what outputs it generates via the `-params` option before using the `CALL` command along with the job name.
 
-1. Use the NameCode job on the SmartBox to get the call number of your job: send the byte 3, then the name of your job as an ASCII string terminated with CR (13), then read one byte back. That returned byte will have the call number.
-2. Send the call number byte to the SmartBox, then any input data that your job requires (the job will retrieve the input data from the caller via OS_READJOB).
-3. Read back as many bytes from the SmartBox as your job is designed to return (the job will send output data to the caller via OS_SENDJOB).
+As our example job does not take any inputs (which would be received by `OS_READJOB`) or produce any output (which would be transmitted by `OS_SENDJOB`) we'd use `(--)` as the parameter definition:
+
+```
+SmartCOD -port COM1 -params (--) call DemoJob
+```
+
+Further information is given below in the `CALL` documentation
 
 ## Command-line usage
 
