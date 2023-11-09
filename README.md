@@ -248,7 +248,7 @@ As our example job does not take any inputs (which would be received by `OS_READ
 SmartCOD -port COM1 -params (--) call DemoJob
 ```
 
-Further information is given below in the `CALL` documentation
+Further information is given below in the [#call](`CALL`) documentation.
 
 ## Command-line usage
 
