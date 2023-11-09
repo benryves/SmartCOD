@@ -71,7 +71,7 @@ namespace SmartCOD {
 							returnValue = Reset(options);
 							break;
 						default:
-							Console.Error.WriteLine("Unsupported operation '{0}'.", args[0]);
+							Console.Error.WriteLine("Unsupported command '{0}'.", arg);
 							returnValue = 1;
 							break;
 					}
