@@ -286,6 +286,40 @@ Downloads a .COD file to the SmartBox and executes it.
 SmartCOD -cod DEMOJOB.COD -port COM1 load
 ```
 
+### CALL
+
+Calls a job on the SmartBox.
+
+| Option             | Description                                    |
+|--------------------|------------------------------------------------|
+| `-params <params>` | Parameters for the job.                        |
+| `-port <portname>` | Name of the SmartBox's serial port.            |
+      
+
+| Argument      |                                       |
+|---------------|---------------------------------------|
+| `<jobname>`   | Name of the job to call.              |
+| `<arguments>` | As defined with the `-params` option. |
+
+```
+SmartCOD -port COM1 -params (?--$) call CodeName 20
+SmartCOD -port COM1 -params (?,?,?--) call OutputPower 0 2 48
+```
+
+Parameters take the form `(<inputs>--<outputs>)` where the inputs and outputs are comma-separated lists of data types:
+
+| Symbol              | Type                    |
+|---------------------|-------------------------|
+| `?` or `&` or `B`   | Byte                    |
+| `??` or `&&` or `W` | 16-bit word             |
+| `!` or `%` or `I`   | 32-bit integer          |
+| `$` or `S`          | String (CR-terminated)  |
+| `$0` or `S0`        | String (NUL-terminated) |
+
+For example, `(?--$)` defines a job call that takes a byte as input and returns a string as output or `(??,?--)` defines a job that takes a 16-bit word and byte as input and has no output.
+
+The `-params` option is cleared automatically after invoking the call however if you re-call a job without supplying new parameters the parameter definition will be remembered from the previous call.
+
 ### LIST
 
 Lists jobs on the connected SmartBox.

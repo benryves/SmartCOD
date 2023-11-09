@@ -119,6 +119,21 @@ namespace SmartCOD {
 		}
 
 		/// <summary>
+		/// Writes a 32-bit value to the port.
+		/// </summary>
+		/// <param name="value">The 32-bit value to write.</param>
+		public void Write(uint value) {
+			while (this.port.IsOpen) {
+				try {
+					this.writer.Write(value);
+					return;
+				} catch (TimeoutException) {
+					this.HandleTimeout();
+				}
+			}
+		}
+
+		/// <summary>
 		/// Writes a string to the port.
 		/// </summary>
 		/// <param name="value">The value to write.</param>
@@ -174,6 +189,21 @@ namespace SmartCOD {
 			while (this.port.IsOpen) {
 				try {
 					return this.reader.ReadUInt16();
+				} catch (TimeoutException) {
+					this.HandleTimeout();
+				}
+			}
+			return 0;
+		}
+
+		/// <summary>
+		/// Reads a 32-bit value from the port.
+		/// </summary>
+		/// <returns>The 32-byte value read from the port.</returns>
+		public uint ReadUInt32() {
+			while (this.port.IsOpen) {
+				try {
+					return this.reader.ReadUInt32();
 				} catch (TimeoutException) {
 					this.HandleTimeout();
 				}

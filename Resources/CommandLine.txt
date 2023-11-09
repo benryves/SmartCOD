@@ -1,6 +1,6 @@
 Usage:
 
-  SmartCOD -option value command
+  SmartCOD [-option value] command [arguments]
 
   Option names start with a -dash and all options must precede the
   corresponding command.
@@ -12,6 +12,10 @@ Usage:
 
   If you need to unset an option you can do so manually with the
   -unset <option> option.
+
+  Most commands do not take any arguments (options are specified ahead
+  of time) however the CALL command always takes a job name and any
+  arguments for that job previously specified with -params.
 
 Commands:
 
@@ -33,6 +37,33 @@ Commands:
       -port <portname> : Name of the SmartBox's serial port.
     Example:
       SmartCOD -cod DEMOJOB.COD -port COM1 load
+
+  CALL
+    Calls a job on the SmartBox.
+    Options:
+      -params <params> : Parameters for the job.
+      -port <portname> : Name of the SmartBox's serial port.
+    Arguments:
+      <jobname>   : Name of the job to call.
+      <arguments> : As defined with the -params option.
+    Example:
+      SmartCOD -port COM1 -params (?--$) call CodeName 20
+      SmartCOD -port COM1 -params (?,?,?--) call OutputPower 0 2 48
+    Notes:
+      Parameters take the form (<inputs>--<outputs>) where the inputs
+      and outputs are comma-separated lists of data types:
+        ? or & or B   : byte
+        ?? or && or W : 16-bit word
+        ! or % or I   : 32-bit integer
+        $ or S        : string (CR-terminated)
+        $0 or S0      : string (NUL-terminated)
+      For example, (?--$) defines a job call that takes a byte as
+      input and returns a string as output or (??,?--) defines a job
+      that takes a 16-bit word and byte as input and has no output.
+      The -params option is cleared automatically after invoking the
+      call however if you re-call a job without supplying new
+      parameters the parameter definition will be remembered from the
+      previous call.
 
   LIST
     Lists jobs on the connected SmartBox.

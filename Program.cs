@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Ports;
+using System.Runtime.InteropServices;
+using System.Text.RegularExpressions;
 
 namespace SmartCOD {
 	internal class Program {
@@ -70,6 +72,9 @@ namespace SmartCOD {
 						case "reset":
 							returnValue = Reset(options);
 							break;
+						case "call":
+							returnValue = Call(options, argQueue);
+							break;
 						default:
 							Console.Error.WriteLine("Unsupported command '{0}'.", arg);
 							returnValue = 1;
@@ -115,6 +120,70 @@ namespace SmartCOD {
 		/// <returns><c>true</c> if the byte value could be parsed, <c>false</c> otherwise.</returns>
 		static bool TryParseByte(string value, out byte result) {
 			return byte.TryParse(value, out result);
+		}
+
+		/// <summary>
+		/// Try to parse a string value as a ushort.
+		/// </summary>
+		/// <param name="value">The value to try to parse.</param>
+		/// <param name="result">The parsed ushort value.</param>
+		/// <returns><c>true</c> if the ushort value could be parsed, <c>false</c> otherwise.</returns>
+		static bool TryParseUShort(string value, out ushort result) {
+			return ushort.TryParse(value, out result);
+		}
+
+		/// <summary>
+		/// Try to parse a string value as a uint.
+		/// </summary>
+		/// <param name="value">The value to try to parse.</param>
+		/// <param name="result">The parsed byte value.</param>
+		/// <returns><c>true</c> if the uint value could be parsed, <c>false</c> otherwise.</returns>
+		static bool TryParseUInt(string value, out uint result) {
+			return uint.TryParse(value, out result);
+		}
+
+		/// <summary>
+		/// Try to parse a string value as a string.
+		/// </summary>
+		/// <param name="value">The value to try to parse.</param>
+		/// <param name="result">The parsed string value.</param>
+		/// <returns><c>true</c> if the string value could be parsed, <c>false</c> otherwise.</returns>
+		static bool TryParseString(string value, out string result) {
+			result = value;
+			return true;
+		}
+
+		static bool TryParseArgument(CallParameterType type, string value, out object result) {
+
+			bool success = false;
+			object primitive = default;
+
+			switch (type) {
+				case CallParameterType.Byte:
+					if (success = TryParseByte(value, out byte b)) {
+						primitive = b;
+					}
+					break;
+				case CallParameterType.Word:
+					if (success = TryParseUShort(value, out ushort w)) {
+						primitive = w;
+					}
+					break;
+				case CallParameterType.Int:
+					if (success = TryParseUInt(value, out uint i)) {
+						primitive = i;
+					}
+					break;
+				case CallParameterType.String:
+				case CallParameterType.NulTerminatedString:
+					if (success = TryParseString(value, out string s)) {
+						primitive = s;
+					}
+					break;
+			}
+			
+			result = primitive;
+			return success;
 		}
 
 		/// <summary>
@@ -311,6 +380,212 @@ namespace SmartCOD {
 					box.Reset(reset);
 				}
 			}
+			return 0;
+		}
+
+		enum CallParameterType {
+			Byte,
+			Word,
+			Int,
+			String,
+			NulTerminatedString,
+		}
+
+		static bool TryGetCallParameterType(string typeString, out CallParameterType type) {
+			if (typeString == null) {
+				type = default;
+				return false;
+			}
+			switch (typeString.Trim().ToUpperInvariant()) {
+				case "B":
+				case "?":
+				case "&":
+					type = CallParameterType.Byte;
+					return true;
+				case "W":
+				case "??":
+				case "&&":
+					type = CallParameterType.Word;
+					return true;
+				case "I":
+				case "!":
+				case "%":
+					type = CallParameterType.Int;
+					return true;
+				case "S":
+				case "$":
+					type = CallParameterType.String;
+					return true;
+				case "S0":
+				case "$0":
+					type = CallParameterType.NulTerminatedString;
+					return true;
+				default:
+					type = default;
+					return false;
+			}
+		}
+
+		static bool TryGetCallParameterTypes(string[] typeStrings, out CallParameterType[] types) {
+			types = new CallParameterType[typeStrings.Length];
+			for (int i = 0; i < typeStrings.Length; ++i) {
+				if (!TryGetCallParameterType(typeStrings[i], out types[i])) {
+					types = default;
+					return false;
+				}
+			}
+			return true;
+		}
+
+		static bool TryGetCallParameterTypes(string typeStrings, out CallParameterType[] types) {
+			if (typeStrings == null) {
+				types = default;
+				return false;
+			} else if (typeStrings.Trim().Length == 0) {
+				types = new CallParameterType[] { };
+				return true;
+			}
+			return TryGetCallParameterTypes(typeStrings.Split(','), out types);
+		}
+
+		static readonly Dictionary<string, string> CallParameters = new Dictionary<string, string>();
+
+		/// <summary>
+		/// Call a job on the SmartBox.
+		/// </summary>
+		static int Call(Dictionary<string, string> options, Queue<string> arguments) {
+
+			// We always need a job name to call.
+			if (arguments.Count < 1) {
+				Console.Error.WriteLine("Job name not specified in call.");
+				return 1;
+			}
+			var jobName = arguments.Dequeue();
+
+			// We also need a parameter definition.
+			string parameters = null;
+			if (options.ContainsKey("params")) {
+				parameters = options["params"];
+			} else if (CallParameters.ContainsKey(jobName.ToLowerInvariant())) {
+				parameters = CallParameters[jobName.ToLowerInvariant()];
+			}
+
+			if (string.IsNullOrEmpty(parameters)) {
+				Console.Error.WriteLine("Parameters not defined for call '{0}'.", jobName);
+				return 1;
+			}
+
+			// Trim the parameter definition.
+			parameters = parameters.Trim().TrimStart('(').TrimEnd(')');
+
+			// Check parameters are in form (in--out)
+			var parameterParts = parameters.Split(new[] { "--" }, StringSplitOptions.None);
+			if (parameterParts.Length != 2) {
+				Console.Error.WriteLine("Parameter definition not correctly defined for call '{0}'.", jobName);
+				return 1;
+			}
+
+			// Convert parameter type definitions from user-supplied string.
+			if (!TryGetCallParameterTypes(parameterParts[0], out CallParameterType[] inputParameters)) {
+				Console.Error.WriteLine("Parameter input definition not correctly specified for call '{0}'.", jobName);
+				return 1;
+			}
+			if (!TryGetCallParameterTypes(parameterParts[1], out CallParameterType[] outputParameters)) {
+				Console.Error.WriteLine("Parameter output definition not correctly specified for call '{0}'.", jobName);
+				return 1;
+			}
+
+			// Check if we have enough input arguments.
+			if (arguments.Count < inputParameters.Length) {
+				Console.Error.WriteLine("Not enough input arguments specified for call '{0}' (expected: '{1}').", jobName, parameterParts[0]);
+				return 1;
+            }
+
+			// Parse input arguments.
+			var inputArguments = new KeyValuePair<CallParameterType, object>[inputParameters.Length];
+			for (int i = 0; i < inputParameters.Length; ++i) {
+				var arg = arguments.Dequeue();
+				if (TryParseArgument(inputParameters[i], arg, out object o)) {
+					inputArguments[i] = new KeyValuePair<CallParameterType, object>(inputParameters[i], o);
+				} else {
+					Console.Error.WriteLine("Could not parse argument '{0}' as '{1}'.", arg, inputParameters[i]);
+					return 1;
+				}
+			}
+
+			// At this point we're ready to call the routine.
+			if (!TryGetSmartBox(options, out SmartBox box)) {
+				return 1;
+			} else {
+				using (box) {
+					
+					// Get the job code.
+					var jobCode = box.GetNameCode(jobName);
+					if (jobCode == 0 && jobName.ToLowerInvariant() != "blank") {
+						Console.Error.WriteLine("Could not get job code for job '{0}'.", jobName);
+						return 1;
+					}
+					
+					// Write the job code.
+					box.port.Write((byte)jobCode);
+
+					// Send all of the input arguments.
+					foreach (var arg in inputArguments) {
+						switch (arg.Key) {
+							case CallParameterType.Byte:
+								box.port.Write((byte)arg.Value);
+								break;
+							case CallParameterType.Word:
+								box.port.Write((ushort)arg.Value);
+								break;
+							case CallParameterType.Int:
+								box.port.Write((uint)arg.Value);
+								break;
+							case CallParameterType.String:
+								box.port.Write((string)arg.Value);
+								break;
+							case CallParameterType.NulTerminatedString:
+								box.port.Write((string)arg.Value, 0);
+								break;
+						}
+					}
+
+					// Fetch the output data.
+					foreach (var type in outputParameters) {
+						object data = default;
+						switch (type) {
+							case CallParameterType.Byte:
+								data = box.port.ReadByte();
+								break;
+							case CallParameterType.Word:
+								data = box.port.ReadUInt16();
+								break;
+							case CallParameterType.Int:
+								data = box.port.ReadUInt32();
+								break;
+							case CallParameterType.String:
+								data = box.port.ReadString();
+								break;
+							case CallParameterType.NulTerminatedString:
+								data = box.port.ReadString(0);
+								break;
+							default:
+								throw new InvalidOperationException();
+						}
+                        Console.WriteLine(data.ToString().Replace("\r", Environment.NewLine));
+                    }
+                }
+			}
+
+			// Clear the parameter list.
+			options.Remove("params");
+
+			// Remember the parameters for later.
+			if (CallParameters.ContainsKey(jobName.ToLowerInvariant())) {
+				CallParameters.Remove(jobName.ToLowerInvariant());
+			}
+			CallParameters.Add(jobName.ToLowerInvariant(), parameters);
+
 			return 0;
 		}
 	}
