@@ -30,13 +30,22 @@ Commands:
     Downloads a .COD file to the SmartBox and executes it.
     Options:
       -cod <filename>  : Filename of the .COD file to load and execute.
-      -port <portname> : Port name of the SmartBox's serial port.
+      -port <portname> : Name of the SmartBox's serial port.
     Example:
       SmartCOD -cod DEMOJOB.COD -port COM1 load
 
   LIST
     Lists jobs on the connected SmartBox.
     Options:
-      -port <portname> : Port name of the SmartBox's serial port.
+      -port <portname> : Name of the SmartBox's serial port.
     Example:
       SmartCOD -port COM1 list
+
+  RESET
+    Resets the SmartBox.
+    Options:
+      -reset hard/soft/<value> : Hard reset clears battery-backed RAM.
+                                   (optional, defaults to soft).
+      -port <portname>         : Name of the SmartBox's serial port.
+    Example:
+      SmartCOD -port COM1 -reset hard reset

@@ -67,6 +67,9 @@ namespace SmartCOD {
 						case "list":
 							returnValue = List(options);
 							break;
+						case "reset":
+							returnValue = Reset(options);
+							break;
 						default:
 							Console.Error.WriteLine("Unsupported operation '{0}'.", args[0]);
 							returnValue = 1;
@@ -102,6 +105,16 @@ namespace SmartCOD {
 
 			box = new SmartBox(portName);
 			return true;
+		}
+
+		/// <summary>
+		/// Try to parse a string value as a byte.
+		/// </summary>
+		/// <param name="value">The value to try to parse.</param>
+		/// <param name="result">The parsed byte value.</param>
+		/// <returns><c>true</c> if the byte value could be parsed, <c>false</c> otherwise.</returns>
+		static bool TryParseByte(string value, out byte result) {
+			return byte.TryParse(value, out result);
 		}
 
 		/// <summary>
@@ -248,6 +261,9 @@ namespace SmartCOD {
 
 		}
 
+		/// <summary>
+		/// Show a listing of jobs on the SmartBox
+		/// </summary>
 		static int List(Dictionary<string, string> options) {
 			if (!TryGetSmartBox(options, out SmartBox box)) {
 				return 1;
@@ -259,6 +275,40 @@ namespace SmartCOD {
 							Console.WriteLine("{0}: {1}", i, s);
 						}
 					}
+				}
+			}
+			return 0;
+		}
+
+		/// <summary>
+		/// Reset the SmartBox
+		/// </summary>
+		static int Reset(Dictionary<string, string> options) {
+
+			byte reset = 254;
+
+			if (options.ContainsKey("reset")) {
+				switch (options["reset"].ToLowerInvariant()) {
+					case "hard":
+						reset = 255;
+						break;
+					case "soft":
+						reset = 254;
+						break;
+					default:
+						if (!TryParseByte(options["reset"], out reset)) {
+							Console.Error.WriteLine("Could not parse -reset value '{0}'.", options["reset"]);
+							return 1;
+						}
+						break;
+				}
+			}
+
+			if (!TryGetSmartBox(options, out SmartBox box)) {
+				return 1;
+			} else {
+				using (box) {
+					box.Reset(reset);
 				}
 			}
 			return 0;

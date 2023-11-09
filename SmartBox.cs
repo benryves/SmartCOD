@@ -106,8 +106,17 @@ namespace SmartCOD {
 		/// <param name="hard">Set to <c>true</c> to clear battery-backed RAM.</param>
 		/// <remarks>Before sending anymore codes create a small delay while SmartBox resets various parts of hardware</remarks>
 		public void Reset(bool hard) {
+			this.Reset((byte)(hard ? 255 : 254));
+		}
+
+		/// <summary>
+		/// Reset SmartBox
+		/// </summary>
+		/// <param name="mode">Reset mode (e.g. 255 for hard reset, 254 for soft reset)</param>
+		/// <remarks>Before sending anymore codes create a small delay while SmartBox resets various parts of hardware</remarks>
+		public void Reset(byte mode) {
 			this.port.Write((byte)Command.Reset);
-			this.port.Write((byte)(hard ? 255 : 254));
+			this.port.Write((byte)mode);
 		}
 
 		/// <summary>
