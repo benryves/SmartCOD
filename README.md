@@ -250,7 +250,7 @@ Running your installed job will generally follow this process:
 ## Command-line usage
 
 ```
-SmartCOD -option value command
+SmartCOD [-option value] command [arguments]
 ```
 
 Option names start with a `-dash` and all options must precede the corresponding command.
@@ -258,6 +258,8 @@ Option names start with a `-dash` and all options must precede the corresponding
 Options are retained after executing a command, so for example if you are building and loading a .COD file in one command line you only need to specify `-cod <filename>` before the build command and it will still be set when the load command runs.
 
 If you need to unset an option you can do so manually with the `-unset <option>` option.
+
+Most commands do not take arguments however the `CALL` command will always take a job name and any arguments previously specified for that job name with the `-params` option.
 
 ### BUILD
 
