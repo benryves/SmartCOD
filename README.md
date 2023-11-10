@@ -299,17 +299,6 @@ Calls a job on the SmartBox.
 |--------------------|------------------------------------------------|
 | `-params <params>` | Parameters for the job.                        |
 | `-port <portname>` | Name of the SmartBox's serial port.            |
-      
-
-| Argument      |                                       |
-|---------------|---------------------------------------|
-| `<jobname>`   | Name of the job to call.              |
-| `<arguments>` | As defined with the `-params` option. |
-
-```
-SmartCOD -port COM1 -params (?--$) call CodeName 20
-SmartCOD -port COM1 -params (?,?,?--) call OutputPower 0 2 48
-```
 
 Parameters take the form `(<inputs>--<outputs>)` where the inputs and outputs are comma-separated lists of data types:
 
@@ -324,6 +313,26 @@ Parameters take the form `(<inputs>--<outputs>)` where the inputs and outputs ar
 For example, `(?--$)` defines a job call that takes a byte as input and returns a string as output or `(??,?--)` defines a job that takes a 16-bit word and byte as input and has no output.
 
 The `-params` option is cleared automatically after invoking the call however if you re-call a job without supplying new parameters the parameter definition will be remembered from the previous call.
+
+You must pass the job name and any job arguments (definitions supplied with the `-params` option) as arguments after the call command:
+
+```
+call <jobname> [<arguments>]
+```
+
+| Argument      | Description                           |
+|---------------|---------------------------------------|
+| `<jobname>`   | Name of the job to call.              |
+| `<arguments>` | As defined with the `-params` option. |
+
+The first example below prints the name of the job with code 20 (the `CodeName` job takes a byte as input and returns a string as output).
+
+The second example causes output 0 to pulse on for 2cs and then off for 48cs using the `OutputPower` job which takes three bytes as inputs and returns no output.
+
+```
+SmartCOD -port COM1 -params (?--$) call CodeName 20
+SmartCOD -port COM1 -params (?,?,?--) call OutputPower 0 2 48
+```
 
 ### LIST
 
